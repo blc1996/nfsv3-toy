@@ -115,6 +115,7 @@ ls -la /mnt/pi-usb
 - Default mode logs important lifecycle and errors.
 - Start with `--verbose` (or `-v`) to enable debug logs.
 - Debug mode is useful for seeing queued request behavior and per-procedure handling details while testing on your LAN.
+- Improved NFSv3 `FSINFO` reply XDR compatibility for stricter clients (including macOS), and updated mount auth flavor advertisement (`AUTH_SYS` + `AUTH_NULL`).
 
 ## Optional: systemd unit on Raspberry Pi
 

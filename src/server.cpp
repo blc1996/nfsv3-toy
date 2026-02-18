@@ -115,7 +115,8 @@ std::vector<uint8_t> Server::handle_mount(const RpcCall &c) {
 
     out.write_u32(MNT3_OK);
     out.write_opaque(make_fh(export_root_));
-    out.write_u32(1);
+    out.write_u32(2);
+    out.write_u32(AUTH_SYS);
     out.write_u32(AUTH_NULL);
     return out.buf;
   }
@@ -266,16 +267,20 @@ std::vector<uint8_t> Server::handle_nfs(const RpcCall &c) {
       out.write_u64(1024ULL * 512ULL);
       out.write_u32(0);
     } else if (c.proc == 19) {
-      out.write_u32(4096);
-      out.write_u32(4096);
-      out.write_u32(1024 * 1024);
-      out.write_u32(4096);
-      out.write_u32(1024 * 1024);
-      out.write_u32(1);
-      out.write_u32(1);
-      out.write_u32(0);
-      out.write_u32(0x0003);
-      out.write_u32(0);
+      // FSINFO3resok:
+      // rtmax, rtpref, rtmult, wtmax, wtpref, wtmult, dtpref,
+      // maxfilesize, time_delta(sec,nsec), properties
+      out.write_u32(1024 * 1024);   // rtmax
+      out.write_u32(64 * 1024);     // rtpref
+      out.write_u32(4096);          // rtmult
+      out.write_u32(1024 * 1024);   // wtmax
+      out.write_u32(64 * 1024);     // wtpref
+      out.write_u32(4096);          // wtmult
+      out.write_u32(64 * 1024);     // dtpref
+      out.write_u64((1ULL << 40));  // maxfilesize (1 TiB advertised)
+      out.write_u32(1);             // time_delta.seconds
+      out.write_u32(0);             // time_delta.nseconds
+      out.write_u32(0x000F);        // properties bitmask
     } else {
       out.write_u32(255);
       out.write_u32(255);
