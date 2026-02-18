@@ -82,10 +82,11 @@ sudo ./build/nfsv3_toy_server \
   --export /srv/usb-hdd \
   --nfs-port 2049 \
   --mount-port 20048 \
-  --max-workers 8
+  --max-workers 8 \
+  --verbose
 ```
 
-The server listens on all interfaces (`0.0.0.0`), accepts connections using `epoll`, and queues accepted sockets to a fixed-size worker pool (`--max-workers`).
+The server listens on all interfaces (`0.0.0.0`), accepts connections using `epoll`, and queues accepted sockets to a fixed-size worker pool (`--max-workers`). Use `--verbose` to enable debug logs (RPC procedure traces, queue events, and connection lifecycle logs).
 
 ### 4) Open firewall (if enabled)
 
@@ -108,6 +109,14 @@ mount | grep /mnt/pi-usb
 ls -la /mnt/pi-usb
 ```
 
+
+## Logging
+
+- Default mode logs important lifecycle and errors.
+- Start with `--verbose` (or `-v`) to enable debug logs.
+- Debug mode is useful for seeing queued request behavior and per-procedure handling details while testing on your LAN.
+- Improved NFSv3 `FSINFO` reply XDR compatibility for stricter clients (including macOS), and updated mount auth flavor advertisement (`AUTH_SYS` + `AUTH_NULL`).
+
 ## Optional: systemd unit on Raspberry Pi
 
 Create `/etc/systemd/system/nfsv3-toy.service`:
@@ -120,7 +129,7 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-ExecStart=/home/pi/nfsv3-toy/build/nfsv3_toy_server --export /srv/usb-hdd --nfs-port 2049 --mount-port 20048 --max-workers 8
+ExecStart=/home/pi/nfsv3-toy/build/nfsv3_toy_server --export /srv/usb-hdd --nfs-port 2049 --mount-port 20048 --max-workers 8 --verbose
 Restart=on-failure
 User=root
 

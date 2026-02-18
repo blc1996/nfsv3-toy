@@ -5,10 +5,12 @@
 #include <cerrno>
 #include <filesystem>
 #include <iostream>
+#include <string>
 #include <vector>
 
 #include "nfsv3/config.hpp"
 #include "nfsv3/constants.hpp"
+#include "nfsv3/log.hpp"
 #include "nfsv3/net.hpp"
 #include "nfsv3/server.hpp"
 #include "nfsv3/worker_pool.hpp"
@@ -16,11 +18,12 @@
 int main(int argc, char **argv) {
   nfsv3::RuntimeConfig cfg;
   if (!nfsv3::parse_args(argc, argv, cfg)) return 0;
+  nfsv3::log::set_verbose(cfg.verbose);
 
   std::error_code ec;
   std::filesystem::path canon = std::filesystem::weakly_canonical(cfg.export_dir, ec);
   if (ec || !std::filesystem::exists(canon) || !std::filesystem::is_directory(canon)) {
-    std::cerr << "Export directory must exist and be a directory: " << cfg.export_dir << "\n";
+    nfsv3::log::write(nfsv3::log::Level::kError, "Export directory must exist and be a directory: " + cfg.export_dir.string());
     return 1;
   }
 
@@ -31,18 +34,18 @@ int main(int argc, char **argv) {
   int nfs_fd = nfsv3::listen_tcp(cfg.nfs_port);
   int mnt_fd = nfsv3::listen_tcp(cfg.mount_port);
   if (nfs_fd < 0 || mnt_fd < 0) {
-    std::perror("listen");
+    nfsv3::log::write(nfsv3::log::Level::kError, "Failed to create listening sockets");
     return 1;
   }
 
   int epfd = epoll_create1(0);
   if (epfd < 0) {
-    std::perror("epoll_create1");
+    nfsv3::log::write(nfsv3::log::Level::kError, "epoll_create1 failed");
     return 1;
   }
 
   if (!nfsv3::epoll_add(epfd, nfs_fd, EPOLLIN) || !nfsv3::epoll_add(epfd, mnt_fd, EPOLLIN)) {
-    std::perror("epoll_ctl");
+    nfsv3::log::write(nfsv3::log::Level::kError, "epoll_ctl add listener failed");
     return 1;
   }
 
@@ -51,6 +54,7 @@ int main(int argc, char **argv) {
             << "  mountd tcp port: " << cfg.mount_port << "\n"
             << "  nfs tcp port: " << cfg.nfs_port << "\n"
             << "  max workers: " << cfg.max_workers << "\n"
+            << "  verbose logs: " << (cfg.verbose ? "enabled" : "disabled") << "\n"
             << "Incoming sockets are accepted with epoll and queued to worker threads.\n"
             << "Use clients with: vers=3,tcp,port=" << cfg.nfs_port << ",mountport=" << cfg.mount_port
             << ",nolock\n";
@@ -60,7 +64,7 @@ int main(int argc, char **argv) {
     int ready = epoll_wait(epfd, events.data(), static_cast<int>(events.size()), -1);
     if (ready < 0) {
       if (errno == EINTR) continue;
-      std::perror("epoll_wait");
+      nfsv3::log::write(nfsv3::log::Level::kError, "epoll_wait failed");
       break;
     }
 
@@ -76,6 +80,7 @@ int main(int argc, char **argv) {
           if (errno == EAGAIN || errno == EWOULDBLOCK) break;
           break;
         }
+        nfsv3::log::write(nfsv3::log::Level::kDebug, "Accepted connection and queued fd=" + std::to_string(cfd));
         pool.enqueue(nfsv3::Job{cfd, prog, ver});
       }
     }

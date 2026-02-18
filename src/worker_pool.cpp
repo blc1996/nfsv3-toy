@@ -2,7 +2,9 @@
 
 #include <unistd.h>
 
+#include <string>
 #include "nfsv3/constants.hpp"
+#include "nfsv3/log.hpp"
 #include "nfsv3/rpc.hpp"
 
 namespace nfsv3 {
@@ -10,6 +12,7 @@ namespace nfsv3 {
 WorkerPool::WorkerPool(size_t max_workers) {
   if (max_workers == 0) max_workers = 1;
   workers_.reserve(max_workers);
+  nfsv3::log::write(nfsv3::log::Level::kInfo, "Starting worker pool with " + std::to_string(max_workers) + " workers");
   for (size_t i = 0; i < max_workers; ++i) {
     workers_.emplace_back([this] { run(); });
   }
@@ -27,10 +30,13 @@ WorkerPool::~WorkerPool() {
 void WorkerPool::set_server(Server *srv) { server_ = srv; }
 
 void WorkerPool::enqueue(Job j) {
+  size_t qsize = 0;
   {
     std::lock_guard<std::mutex> lk(mu_);
     queue_.push_back(j);
+    qsize = queue_.size();
   }
+  nfsv3::log::write(nfsv3::log::Level::kDebug, "Enqueued job fd=" + std::to_string(j.client_fd) + ", queue_size=" + std::to_string(qsize));
   cv_.notify_one();
 }
 
@@ -44,6 +50,7 @@ void WorkerPool::run() {
       j = queue_.front();
       queue_.pop_front();
     }
+    nfsv3::log::write(nfsv3::log::Level::kDebug, "Worker handling fd=" + std::to_string(j.client_fd));
     serve_client(j.client_fd, *server_, j.expected_prog, j.expected_ver);
   }
 }
@@ -55,6 +62,7 @@ void WorkerPool::serve_client(int client, Server &srv, uint32_t expected_prog, u
 
     RpcCall c;
     if (!parse_rpc_call(*rec, c)) {
+      nfsv3::log::write(nfsv3::log::Level::kDebug, "Failed to parse RPC call");
       auto r = rpc_reply_header(0, ACCEPT_GARBAGE_ARGS);
       write_rpc_record(client, r);
       continue;
@@ -91,6 +99,7 @@ void WorkerPool::serve_client(int client, Server &srv, uint32_t expected_prog, u
     hdr.insert(hdr.end(), body.begin(), body.end());
     if (!write_rpc_record(client, hdr)) break;
   }
+  nfsv3::log::write(nfsv3::log::Level::kDebug, "Connection closed fd=" + std::to_string(client));
   ::close(client);
 }
 

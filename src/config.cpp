@@ -30,8 +30,10 @@ bool parse_args(int argc, char **argv, RuntimeConfig &cfg) {
       cfg.mount_port = static_cast<uint16_t>(std::stoi(need(a)));
     } else if (a == "--max-workers") {
       cfg.max_workers = static_cast<size_t>(std::stoul(need(a)));
+    } else if (a == "--verbose" || a == "-v") {
+      cfg.verbose = true;
     } else if (a == "--help" || a == "-h") {
-      std::cout << "Usage: nfsv3_toy_server [--export /path] [--nfs-port 2049] [--mount-port 20048] [--max-workers 8]\n";
+      std::cout << "Usage: nfsv3_toy_server [--export /path] [--nfs-port 2049] [--mount-port 20048] [--max-workers 8] [--verbose]\n";
       return false;
     } else {
       std::cerr << "Unknown argument: " << a << "\n";

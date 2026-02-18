@@ -8,6 +8,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 add_executable(nfsv3_toy_server
   src/main.cpp
   src/config.cpp
+  src/log.cpp
   src/net.cpp
   src/rpc.cpp
   src/server.cpp

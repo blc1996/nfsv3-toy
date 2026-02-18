@@ -15,6 +15,7 @@ constexpr uint32_t ACCEPT_PROG_UNAVAIL = 1;
 constexpr uint32_t ACCEPT_PROG_MISMATCH = 2;
 
 constexpr uint32_t AUTH_NULL = 0;
+constexpr uint32_t AUTH_SYS = 1;
 
 constexpr uint32_t MOUNT_PROGRAM = 100005;
 constexpr uint32_t MOUNT_V3 = 3;
